@@ -1,0 +1,66 @@
+pipeline {
+    agent any  // Executes the pipeline on any available agent
+
+    environment {
+        GITHUB_REPO_URL = 'https://github.com/rafeedav/jenkins.git' // Replace with your GitHub repo URL
+        TARGET_DIR = '/var/www/html'  // NGINX root directory
+        GIT_BRANCH = 'main'  // Git branch to pull (default: 'main')
+        GITHUB_TOKEN = credentials('6233e704-ad2e-4f5d-9a12-a70770daba55') // Jenkins Credential ID for your GitHub Token
+    }
+
+    stages {
+        stage('Clone Git Repository') {
+            steps {
+                echo 'Cloning repository from GitHub...'
+                // Clone the GitHub repository into a temporary directory using the token
+                sh '''
+                    git clone -b ${GIT_BRANCH} https://${GITHUB_TOKEN}@github.com/rafeedav/jenkins.git /tmp/nginx-site
+                '''
+            }
+        }
+
+        stage('Deploy Files to NGINX Directory') {
+            steps {
+                echo 'Deploying index.html to NGINX directory...'
+                // Copy the content from the cloned repository to the NGINX root directory
+                sh '''echo "12345678" | sudo -S cp -r /tmp/nginx-site/* ${TARGET_DIR}/'''
+            }
+        }
+
+        stage('Restart NGINX') {
+            steps {
+                echo 'Restarting NGINX to reflect changes...'
+                // Restart NGINX to apply any changes (assuming 'sudo' permissions are correctly set)
+                sh '''echo "asd123." | sudo -S systemctl restart nginx'''
+            }
+        }
+
+        stage('Clean Up') {
+            steps {
+                echo 'Cleaning up temporary files...'
+                // Optionally, remove the temporary clone directory
+                sh 'rm -rf /tmp/nginx-site'
+            }
+        }
+
+        stage('Check NGINX Status') {
+            steps {
+                echo 'Checking NGINX status...'
+                // Check NGINX status after the restart
+                sh '''echo "asd123." | sudo -S systemctl status nginx'''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
+        success {
+            echo 'NGINX site deployed successfully.'
+        }
+        failure {
+            echo 'There was an error deploying the NGINX site.'
+        }
+    }
+}
